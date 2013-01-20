@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+
+#==========================================================================
+# dmenutools
+#==========================================================================
+#
+# Commentary:
+#
+# Provides various useful bash functions using dmenu as selection
+# interface.
+# 
+# Window management:
+# 
+#   - gowin: Go to one of the currently open X windows
+#   - fetchwin: Move a window to the current desktop
+#   - killwin: Kill a window
+# 
+# Desktop management:
+#
+#   godesk: Go to the selected desktop
+# 
+# Diverse:
+#
+# - godir: List all subdirectories of the specified directories and `cd' to
+#     the selected one.
+# - ggodir: List all subdirectories of the specified directories and `cd'
+#     to the selected, then prompt for all subdirectories of the current
+#     directory. Repeat this as long as no directory is selected.
+# - browse: Take a bunch of URLs and open the selected one with the right
+#     application ($BROWSER, for instance).
+
+
+# Exit status for a function (preferably integers)
+exitStatus=0;
+
+
+# Displays a menu of all currently open X windows on the top of the screen.
+# Typing will cause an incremental search for faster selection.
+#
+# Parameters:
+#   (None)
+function gowin {
+  wmctrl -l |
+  cut -d' ' -f5- |
+  dmenu -nb '#3f3f3f' \
+    -nf '#dcdccc' \
+    -sf '#3f3f3f' \
+    -sb '#dcdccc' \
+    -p "WINDOW MENU" \
+    -l 45 \
+    -i \
+    |
+  xargs wmctrl -a
+}
+
+# Displays all currently open X windows in a menu and moves the selected
+# window to the current desktop.
+#
+# Parameters:
+#   (None)
+function fetchwin {
+  wmctrl -l |
+  cut -d' ' -f5- |
+  dmenu -nb '#3f3f3f' \
+    -nf '#dcdccc' \
+    -sf '#3f3f3f' \
+    -sb '#dcdccc' \
+    -p "WINDOW MENU" \
+    -l 45 \
+    -i \
+    |
+  xargs wmctrl -R
+}
+
+# Lists all currently open X windows in a menu and kills the selected
+# window.
+#
+# Parameters:
+#   (None)
+function killwin {
+  wmctrl -l |
+  cut -d' ' -f5- |
+  dmenu -nb '#3f3f3f' \
+    -nf '#dcdccc' \
+    -sf '#3f3f3f' \
+    -sb '#dcdccc' \
+    -p "WINDOW MENU" \
+    -l 45 \
+    -i \
+    |
+  xargs wmctrl -c
+}
+
+# Displays all current desktops in a menu and switches to the selected
+# desktop.
+#
+# Parameters:
+#   (None)
+function godesk {
+  wmctrl -d |
+  dmenu -nb '#3f3f3f' \
+    -nf '#dcdccc' \
+    -sf '#3f3f3f' \
+    -sb '#dcdccc' \
+    -p "WINDOW MENU" \
+    -l 45 \
+    -i \
+    |
+  xargs wmctrl -s
+}
+
+# Takes a list of directories and displays a menu for each. On selection
+# `cd' is run on the target directory.
+# The menu provides incremental search.
+#
+# Parameters:
+#   One or more directory names (bash-style expansions possible)
+#
+# Usage:
+#
+#   godir <target-dir-1> <target-dir-2> <target-dir-3>
+#
+# Examples:
+#
+#   godir ~/someDir ~/anotherDir ~/yetAnotherOne
+#   godir ~/someDir/someOtherDir/
+#   godir ~/someDir/**
+function godir {
+  target="";
+  dirs="";
+  quitToken="====== QUIT (qqq) ======\n"
+
+  target=$(
+    for dir in "$@";
+    do
+      find $dir -maxdepth 1 -type d;
+    done |
+
+    sed '/^$/d' |
+
+    # (printf "$quitToken" && cat) |
+    (cat && printf "$quitToken") |
+
+    dmenu -nb '#3f3f3f' \
+      -nf '#dcdccc' \
+      -sf '#3f3f3f' \
+      -sb '#dcdccc' \
+      -p "DIR MENU" \
+      -l 45 \
+      -i \
+      |
+
+    cat
+  )
+
+  token=$(printf "$quitToken" | sed "/\n/d");
+
+  if [ "$target" == "$token" ];
+  then
+    exitStatus=2;
+  # # Only cd to the target directory if it is specified
+  elif [ "$target" != "" ];
+  then
+    cd "$target";
+  else
+    return;
+  fi
+}
+
+# Takes a list of directories and displays a menu for each. On selection
+# `cd' is run on the target directory and `godir' is  run on the target
+# directory too recursively. To quit the recursion select the
+# `====== QUIT (qqq) ======' menu entry which can easily be accest by
+# inserting `qq' or `qqq' in most situations.
+# The menu provides incremental search for each directory.
+#
+# Parameters:
+#   One or more directory names (bash-style expansions possible)
+#
+# Usage:
+#
+#   ggodir <target-dir-1> <target-dir-2> <target-dir-3>
+#
+# Examples:
+#
+#   ggodir ~/someDir ~/anotherDir ~/yetAnotherOne
+#   ggodir ~/someDir/someOtherDir/
+#   ggodir ~/someDir/**
+function ggodir {
+  godir "$@";
+  while true;
+  do
+    godir .;
+    if [ "$exitStatus" == "2" ];
+    then
+      break;
+    fi
+  done
+}
+
+# Reads a string and presents each line in a menu. If the usser chosen menu
+# item is a URL it will use xdg-open to try to open it in the appropriate
+# application.
+#
+# Usage:
+#
+#   browse <file>
+#   browse <URL>
+#   cat <file> | browse
+#   printf <URL> | browse
+function browse () {
+  xdg-open $(cat $1 | dmenu -nb '#3f3f3f' \
+    -nf '#dcdccc' \
+    -sf '#3f3f3f' \
+    -sb '#dcdccc' \
+    -p "DIR MENU" \
+    -l 45 \
+    -i \
+    )
+}
+
