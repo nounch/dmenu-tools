@@ -9,17 +9,17 @@
 #
 # Provides various useful bash functions using dmenu as selection
 # interface.
-# 
+#
 # Window management:
-# 
+#
 #   - gowin: Go to one of the currently open X windows
 #   - fetchwin: Move a window to the current desktop
 #   - killwin: Kill a window
-# 
+#
 # Desktop management:
 #
 #   godesk: Go to the selected desktop
-# 
+#
 # Diverse:
 #
 # - godir: List all subdirectories of the specified directories and `cd' to
@@ -194,6 +194,7 @@ function ggodir {
     godir .;
     if [ "$exitStatus" == "2" ];
     then
+      $exitStatus=0;
       break;
     fi
   done
@@ -219,4 +220,3 @@ function browse () {
     -i \
     )
 }
-
